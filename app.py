@@ -37,8 +37,6 @@ class AttentionLayer(tf.keras.layers.Layer):
 
 # =============================================================================
 # NORMALISASI JOB TITLE
-# — Perbaikan utama: 700+ variasi dipetakan ke ~20 kategori bersih
-# — Fungsi ini WAJIB dipanggil sebelum predict, agar input sesuai training
 # =============================================================================
 def normalize_job(title: str) -> str:
     """
@@ -68,7 +66,6 @@ def normalize_job(title: str) -> str:
     if re.search(r'programmer|developer',                t): return 'software developer'
     if re.search(r'lecturer|professor|instructor',       t): return 'lecturer'
 
-    # fallback: bersihkan dan kembalikan teks aslinya
     cleaned = re.sub(r'[^a-zA-Z\s]', '', t)
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
@@ -79,7 +76,6 @@ def normalize_job(title: str) -> str:
 @st.cache_resource
 def load_all_assets():
     try:
-        # PERBAIKAN 4: tidak perlu custom_objects lagi karena focal_loss sudah di-register
         model = tf.keras.models.load_model(
             'skill_recommendation_model_v3.keras',
             compile=False 
@@ -93,7 +89,7 @@ def load_all_assets():
 model, mlb = load_all_assets()
 
 # =============================================================================
-# FUNGSI PREDIKSI — dengan normalisasi dan threshold yang diperbaiki
+# FUNGSI PREDIKSI
 # =============================================================================
 def predict_skills(job_title: str, top_n: int = 8, threshold: float = 0.2):
     """
@@ -121,7 +117,6 @@ def predict_skills(job_title: str, top_n: int = 8, threshold: float = 0.2):
         if pred[i] >= threshold
     ]
 
-    # fallback: jika semua di bawah threshold, tetap tampilkan top-5
     if not results:
         top5 = np.argsort(pred)[::-1][:5]
         results = [(mlb.classes_[i], float(pred[i])) for i in top5]
@@ -187,7 +182,7 @@ if run:
         results, job_normalized = predict_skills(user_input, top_n=8, threshold=0.2)
         skills_string = ", ".join([s for s, _ in results])
 
-        # Info normalisasi (berguna untuk debugging & transparansi)
+        # Info normalisasi
         if job_normalized != user_input.lower().strip():
             st.info(
                 f"Input kamu **\"{user_input}\"** dikenali sebagai kategori: "
